@@ -1,0 +1,28 @@
+/* This file is the descriptor for custom agent agent-engine-integration */
+{
+   "meta": {
+    "label": "Vertex AI Agent Engine - Agents",
+    "description": "Connect Agent deployed on Vertex AI Agent Engine in Dataiku",
+    "icon": "fas fa-magic"
+  },
+  "supportsImageInputs": false,
+  // "paramsPythonSetup": "params_python_choices.py",
+    "params": [
+        {
+            "name": "vertexai_connection",
+            "label": "Vertex Gen AI Connection",
+            "type": "CONNECTION",
+            "mandatory": true,
+            "description": "Vertex AI connection to use for authentication"
+        },
+        {
+            "name": "agent_id",
+            "label": "Agent Resource Name",
+            "type": "STRING",
+            "mandatory": true,
+            "description": "Vertex AI Agent Engine Resource Name"
+            //"getChoicesFromPython": true,
+            //"visibilityCondition": "model.vertexai_connection && model.gcp_project && model.gcp_region"
+        }
+    ]
+}
