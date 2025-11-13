@@ -6,11 +6,17 @@ from google.cloud.aiplatform_v1 import ReasoningEngineExecutionServiceClient, Re
 from google.cloud.aiplatform_v1.types import QueryReasoningEngineRequest, StreamQueryReasoningEngineRequest
 
 from googleagentengine.utils import get_credentials_from_vertexai_connection
-    
 
-class MyLLM(BaseLLM):
+# Create logger
+logger = logging.getLogger("VertexAIAgent")
+
+
+class VertexAIAgent(BaseLLM):
     def __init__(self):
         pass
+
+    def set_config(self, config, plugin_config):
+        self.config = config
 
     def process(self, query, settings, trace):
         
@@ -30,7 +36,7 @@ class MyLLM(BaseLLM):
  
         prompt = query["messages"][-1]["content"]
 
-        self.logger.info(f"Query: {prompt}")
+        logger.info(f"Query: {prompt}")
 
         # Create the request
         request = QueryReasoningEngineRequest(
@@ -42,10 +48,21 @@ class MyLLM(BaseLLM):
         response = reasoning_client.query_reasoning_engine(request=request)
 
         # Display the response
-        self.logger.info("="*50)
-        self.logger.info(f"Agent Response: {response}")
-        self.logger.info("="*50)
+        logger.info("="*50)
+        logger.info(f"Agent Response: {response}")
+        logger.info("="*50)
+
+        # Parse the response structure
+        # The response.output is a Struct with nested fields
+        # Extract the 'output' field from the struct_value
         output_dict = dict(response.output)
 
-        return {"text": response.output}
+        # Get the actual text response from the nested structure
+        response_text = output_dict.get('output', '')
+
+        # If response_text is still a dict/object, convert to string
+        if not isinstance(response_text, str):
+            response_text = str(response_text)
+
+        return {"text": response_text}
     

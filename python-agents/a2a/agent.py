@@ -10,6 +10,9 @@ from googleagentengine.utils import (
     query_a2a_agent
 )
 
+# Create logger
+logger = logging.getLogger("A2AAgent")
+
 
 async def _inference_vertexai_a2a_agent(connection_name, reasoning_engine_resource_name, prompt, logger):
     """Inference A2A agent deployed on Vertex AI.
@@ -34,10 +37,23 @@ async def _inference_vertexai_a2a_agent(connection_name, reasoning_engine_resour
     # Get credentials
     gcp_credentials = get_credentials_from_vertexai_connection(connection_info)
 
-    # Get auth token
+    # Get auth token with proper scope for Vertex AI
     from google.auth.transport.requests import Request
-    gcp_credentials.refresh(Request())
+
+    # Add the required scope for Vertex AI if not already present
+    if hasattr(gcp_credentials, 'scopes') and gcp_credentials.scopes:
+        # Credentials already have scopes
+        logger.info(f"Using existing credential scopes: {gcp_credentials.scopes}")
+        gcp_credentials.refresh(Request())
+    else:
+        # Add cloud-platform scope for Vertex AI API access
+        if hasattr(gcp_credentials, 'with_scopes'):
+            logger.info("Adding cloud-platform scope to credentials")
+            gcp_credentials = gcp_credentials.with_scopes(['https://www.googleapis.com/auth/cloud-platform'])
+        gcp_credentials.refresh(Request())
+
     auth_token = gcp_credentials.token
+    logger.info("Successfully obtained auth token")
 
     # Get the agent card from Vertex AI
     agent_card = await get_vertexai_agent_card(reasoning_engine_resource_name, auth_token)
@@ -77,12 +93,15 @@ async def _inference_standard_a2a_agent(api_token, agent_base_url, prompt, logge
     return full_response, response_text
 
 
-class MyLLM(BaseLLM):
+class A2AAgent(BaseLLM):
     """Custom LLM implementation for A2A Agent integration in Dataiku"""
 
     def __init__(self):
         pass
 
+    def set_config(self, config, plugin_config):
+        self.config = config
+    
     async def aprocess(self, query, settings, trace):
         """Process a query through the A2A agent asynchronously.
 
@@ -100,11 +119,11 @@ class MyLLM(BaseLLM):
         # Extract the user's prompt from the query
         prompt = query["messages"][-1]["content"]
 
-        self.logger.info("="*70)
-        self.logger.info("A2A Agent Query")
-        self.logger.info("="*70)
-        self.logger.info(f"Auth Type: {auth_type}")
-        self.logger.info(f"Prompt: {prompt}")
+        logger.info("="*70)
+        logger.info("A2A Agent Query")
+        logger.info("="*70)
+        logger.info(f"Auth Type: {auth_type}")
+        logger.info(f"Prompt: {prompt}")
 
         try:
             # Call the appropriate inference function based on auth type
@@ -113,37 +132,37 @@ class MyLLM(BaseLLM):
                 connection_name = self.config.get("vertexai_connection").strip()
                 reasoning_engine_resource_name = self.config.get("reasoning_engine_id").strip()
 
-                self.logger.info(f"Connection: {connection_name}")
-                self.logger.info(f"Reasoning Engine: {reasoning_engine_resource_name}")
+                logger.info(f"Connection: {connection_name}")
+                logger.info(f"Reasoning Engine: {reasoning_engine_resource_name}")
 
                 full_response, response_text = await _inference_vertexai_a2a_agent(
-                    connection_name, reasoning_engine_resource_name, prompt, self.logger
+                    connection_name, reasoning_engine_resource_name, prompt, logger
                 )
             else:  # api_token (Standard A2A Server)
                 # Use Standard A2A Server
                 api_token = self.config.get("api_token").strip()
                 agent_base_url = self.config.get("agent_base_url").strip()
 
-                self.logger.info(f"Agent Base URL: {agent_base_url}")
+                logger.info(f"Agent Base URL: {agent_base_url}")
 
                 full_response, response_text = await _inference_standard_a2a_agent(
-                    api_token, agent_base_url, prompt, self.logger
+                    api_token, agent_base_url, prompt, logger
                 )
 
             # Combine all response text
             final_response = "\n".join(response_text) if response_text else "No response text received"
 
-            self.logger.info("="*70)
-            self.logger.info("Agent Response")
-            self.logger.info("="*70)
-            self.logger.info(final_response)
-            self.logger.info("="*70)
+            logger.info("="*70)
+            logger.info("Agent Response")
+            logger.info("="*70)
+            logger.info(final_response)
+            logger.info("="*70)
 
             return {"text": final_response}
 
         except Exception as e:
             error_msg = f"Error querying A2A agent: {str(e)}"
-            self.logger.error(error_msg)
+            logger.error(error_msg)
             import traceback
             traceback.print_exc()
             return {"text": error_msg}

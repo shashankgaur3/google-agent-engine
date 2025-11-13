@@ -13,8 +13,8 @@ try:
     from google.oauth2 import service_account, credentials
     from google.auth.transport.requests import Request
     from a2a.client import ClientConfig, ClientFactory
+    from a2a.client.card_resolver import A2ACardResolver
     from a2a.types import TransportProtocol, Message, Part, TextPart, AgentCard
-    from a2a.card_resolver import A2ACardResolver
 except ImportError as e:
     raise Exception(
         "Unable to import required libraries. "
@@ -222,7 +222,7 @@ async def query_a2a_agent(a2a_client, prompt, message_id="query-message-1"):
         parts=[Part(root=TextPart(text=prompt))],
     )
 
-    logger.info("Sending message to A2A agent...")
+    logger.info(f"Sending message to A2A agent: {message}")
 
     # Send the message and collect response
     response_iterator = a2a_client.send_message(message)
@@ -233,13 +233,32 @@ async def query_a2a_agent(a2a_client, prompt, message_id="query-message-1"):
     async for chunk in response_iterator:
         full_response.append(chunk)
 
-        # Extract text from response if available
-        if hasattr(chunk, 'message') and chunk.message:
-            if hasattr(chunk.message, 'parts') and chunk.message.parts:
-                for part in chunk.message.parts:
+        # The chunk might be a tuple (Task, metadata) or just the object itself
+        # Extract the actual response object
+        if isinstance(chunk, tuple):
+            actual_chunk = chunk[0] if chunk else None
+        else:
+            actual_chunk = chunk
+
+        if actual_chunk is None:
+            continue
+
+        # Extract text from response - handle both Message and Task responses
+        # Check for Task response with artifacts
+        if hasattr(actual_chunk, 'artifacts') and actual_chunk.artifacts:
+            for artifact in actual_chunk.artifacts:
+                if hasattr(artifact, 'parts') and artifact.parts:
+                    for part in artifact.parts:
+                        if hasattr(part, 'root') and hasattr(part.root, 'text'):
+                            response_text.append(part.root.text)
+        # Check for Message response
+        elif hasattr(actual_chunk, 'message') and actual_chunk.message:
+            if hasattr(actual_chunk.message, 'parts') and actual_chunk.message.parts:
+                for part in actual_chunk.message.parts:
                     if hasattr(part.root, 'text'):
                         response_text.append(part.root.text)
 
-    logger.info("Response received")
+    logger.info(f"Response received: {full_response}")
+    logger.info(f"Extracted text: {response_text}")
 
     return full_response, response_text
