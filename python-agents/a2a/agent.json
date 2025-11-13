@@ -1,0 +1,61 @@
+{
+   "meta": {
+    "label": "Agent to Agent",
+    "description": "Connect to external agents using Vertex AI or API Token authentication",
+    "icon": "fas fa-exchange-alt"
+  },
+  "supportsImageInputs": false,
+    "params": [
+        {
+            "name": "auth_type",
+            "label": "Authentication Type",
+            "type": "SELECT",
+            "mandatory": true,
+            "description": "Select the type of A2A agent deployment",
+            "selectChoices": [
+                {
+                    "value": "vertexai",
+                    "label": "A2A Agent on Vertex AI"
+                },
+                {
+                    "value": "api_token",
+                    "label": "Standard A2A Server"
+                }
+            ],
+            "defaultValue": "vertexai"
+        },
+        {
+            "name": "vertexai_connection",
+            "label": "Vertex AI Connection",
+            "type": "CONNECTION",
+            "allowedConnectionTypes": ["VertexAILLM", "VertexAIModelDeployment"],
+            "mandatory": true,
+            "description": "Vertex AI connection to use for authentication",
+            "visibilityCondition": "model.auth_type == 'vertexai'"
+        },
+        {
+            "name": "reasoning_engine_id",
+            "label": "Reasoning Engine Resource Name",
+            "type": "STRING",
+            "mandatory": true,
+            "description": "Vertex AI Reasoning Engine resource name (e.g., projects/PROJECT_ID/locations/LOCATION/reasoningEngines/ENGINE_ID)",
+            "visibilityCondition": "model.auth_type == 'vertexai'"
+        },
+        {
+            "name": "agent_base_url",
+            "label": "Agent Base URL",
+            "type": "STRING",
+            "mandatory": true,
+            "description": "Base URL of the A2A server (e.g., https://your-server.com). The agent card will be resolved from .well-known/agent-card.json",
+            "visibilityCondition": "model.auth_type == 'api_token'"
+        },
+        {
+            "name": "api_token",
+            "label": "API Token",
+            "type": "PASSWORD",
+            "mandatory": true,
+            "description": "API token for authentication with the A2A server",
+            "visibilityCondition": "model.auth_type == 'api_token'"
+        }
+    ]
+}

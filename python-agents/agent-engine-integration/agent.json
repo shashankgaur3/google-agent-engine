@@ -12,6 +12,7 @@
             "name": "vertexai_connection",
             "label": "Vertex Gen AI Connection",
             "type": "CONNECTION",
+            "allowedConnectionTypes": ["VertexAILLM","VertexAIModelDeployment"],
             "mandatory": true,
             "description": "Vertex AI connection to use for authentication"
         },
